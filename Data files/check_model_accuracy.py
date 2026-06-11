@@ -129,8 +129,8 @@ def check_financial_model(model, df: pd.DataFrame):
     print()
     print(f"  Accuracy Metrics ")
     print(f"  R^2 Score          : {BOLD}{r2:.4f}{RESET}  {score_badge(r2, (0.90, 0.75))}")
-    print(f"  MAE  (Rs./quintal) : {BOLD}Rs.{mae:>10,.2f}{RESET}  (lower is better)")
-    print(f"  RMSE (Rs./quintal) : {BOLD}Rs.{rmse:>10,.2f}{RESET}  (lower is better)")
+    print(f"  MAE                : {BOLD}{mae:>10,.2f}{RESET}  (lower is better)")
+    print(f"  RMSE               : {BOLD}{rmse:>10,.2f}{RESET}  (lower is better)")
     print(f"  MAPE              : {BOLD}{mape:>8.2f}%{RESET}  "
           f"{score_badge(100 - mape, (90, 80))} (100-MAPE)")
     print()
@@ -140,7 +140,7 @@ def check_financial_model(model, df: pd.DataFrame):
     sample = pd.DataFrame({
         "Actual Price (Rs.)":    y.values[:10],
         "Predicted Price (Rs.)": preds[:10],
-        "Error (Rs.)":           preds[:10] - y.values[:10],
+        "Error":           preds[:10] - y.values[:10],
         "Error %":             (preds[:10] - y.values[:10]) / y.values[:10] * 100,
     }).round(2)
     print(sample.to_string(index=False))
@@ -240,7 +240,7 @@ def print_final_verdict(fin: dict, phy: dict):
     sep()
     print(f"  {'Pillar 1 - R^2 (Price Accuracy)':<35} {fin['r2']:<12.4f} "
           f"{score_badge(fin['r2'], (0.90, 0.75))}")
-    print(f"  {'Pillar 1 - MAE (Rs./quintal)':<35} Rs.{fin['mae']:<10,.0f} "
+    print(f"  {'Pillar 1 - MAE ':<35} R{fin['mae']:<10,.0f} "
           f"(lower is better)")
     print(f"  {'Pillar 2 - Accuracy':<35} {phy['accuracy']*100:<10.2f}% "
           f"{score_badge(phy['accuracy'], (0.90, 0.80))}")
