@@ -317,11 +317,11 @@ def main():
         commodity = "Wheat"
 
     # ── Load models ──────────────────────────────────────────────────────────
-    print(f"\n  Loading models for {commodity} …")
+    print(f"\n  Loading models for {commodity} ...")
     fin_model, phy_model, _ = load_models(commodity)
 
     # ── Load data ─────────────────────────────────────────────────────────────
-    print(f"\n  Loading data …")
+    print(f"\n  Loading data ...")
     df = load_csv(csv_path)
 
     # ── Score both models ─────────────────────────────────────────────────────
