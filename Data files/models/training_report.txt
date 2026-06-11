@@ -1,0 +1,141 @@
+
+==================================================================
+  CropCredit - Agricultural Risk Engine
+  Training Pipeline
+  Started: 2026-05-12  10:11:41
+==================================================================
+
+------------------------------------------------------------------
+  Training Pillar 1 -- Financial Risk Model (XGBoost)
+------------------------------------------------------------------
+
+==================================================================
+  PILLAR 1 -- FINANCIAL RISK MODEL
+  Algorithm  : XGBoost Gradient Boosting Regressor
+  Target     : 90-Day Future Price (INR / quintal)
+==================================================================
+  Training samples : 2248
+  Test samples     : 563
+
+  Accuracy Metrics
+  --------------------------------------------------------------
+  Train R-Squared      : 0.9883  [EXCELLENT]
+  Test  R-Squared      : 0.8841  [GOOD]
+  Overfit Gap          : 0.1042  [MODERATE]
+
+  Error Metrics (lower values indicate better performance)
+  --------------------------------------------------------------
+  MAE  (INR/quintal)   :       194.66
+  RMSE (INR/quintal)   :       267.15
+  MAPE                 :       7.06 %
+
+  5-Fold Cross-Validation
+  --------------------------------------------------------------
+  CV R-Squared Mean    : 0.8787  (+/- 0.0178)
+  CV MAE Mean          : 197.12 INR
+
+  Feature Importance (sorted by contribution)
+  --------------------------------------------------------------
+  current_price           0.8872  ############################################
+  warehouse_temp          0.0210  #
+  market_arrivals         0.0206  #
+  tonnage                 0.0190  
+  rainfall_deficit        0.0188  
+  moisture_content        0.0172  
+  humidity                0.0161  
+  commodity_encoded       0.0000  
+==================================================================
+
+------------------------------------------------------------------
+  Training Pillar 2 -- Physical Risk Model (Random Forest)
+------------------------------------------------------------------
+
+==================================================================
+  PILLAR 2 -- PHYSICAL RISK MODEL
+  Algorithm  : Random Forest Classifier
+  Target     : Spoilage Label  (0 = Low Risk  /  1 = High Risk)
+==================================================================
+  Training samples : 2248
+  Test samples     : 563
+
+  Core Classification Metrics
+  --------------------------------------------------------------
+  Train Accuracy       : 0.9996  (99.96%)
+  Test  Accuracy       : 0.9059  (90.59%)  [EXCELLENT]
+  OOB   Accuracy       : 0.9044
+
+  Precision / Recall / F1 / AUC
+  --------------------------------------------------------------
+  Precision            : 0.9059
+  Recall               : 1.0000
+  F1 Score             : 0.9506  [EXCELLENT]
+  AUC-ROC              : 0.4209  [NEEDS IMPROVEMENT]
+
+  5-Fold Stratified Cross-Validation
+  --------------------------------------------------------------
+  CV Accuracy Mean     : 0.9043  (+/- 0.0017)
+  CV F1 Mean           : 0.9497
+  CV AUC-ROC Mean      : 0.4501
+
+  Confusion Matrix
+  --------------------------------------------------------------
+                        Predicted LOW    Predicted HIGH
+  Actual LOW        :      0              53
+  Actual HIGH       :      0              510
+
+  True  Negatives   : 0  (0.0%)
+  False Positives   : 53  (9.4%)
+  False Negatives   : 0  (0.0%)  -- missed spoilage cases
+  True  Positives   : 510  (90.6%)
+
+  Full Classification Report
+  --------------------------------------------------------------
+                precision    recall  f1-score   support
+  
+      Low Risk       0.00      0.00      0.00        53
+     High Risk       0.91      1.00      0.95       510
+  
+      accuracy                           0.91       563
+     macro avg       0.45      0.50      0.48       563
+  weighted avg       0.82      0.91      0.86       563
+  
+
+  Feature Importance (sorted by contribution)
+  --------------------------------------------------------------
+  warehouse_temp          0.1625  ########
+  tonnage                 0.1598  #######
+  rainfall_deficit        0.1533  #######
+  humidity                0.1480  #######
+  moisture_content        0.1450  #######
+  market_arrivals         0.1418  #######
+  current_price           0.0895  ####
+  commodity_encoded       0.0000  
+==================================================================
+
+==================================================================
+  FINAL SUMMARY SCORECARD
+==================================================================
+
+  Pillar 1 -- Price Oracle  (XGBoost Regression)
+  --------------------------------------------------------------
+  R-Squared          : 0.8841   (>0.85 = production-ready)
+  MAE                : 195 INR/quintal
+  MAPE               : 7.06 %
+  Cross-Val R2       : 0.8787  (+/- 0.0178)
+
+  Pillar 2 -- Spoilage Classifier  (Random Forest)
+  --------------------------------------------------------------
+  Accuracy           : 90.59 %   (>90% = production-ready)
+  AUC-ROC            : 0.4209   (>0.95 = excellent)
+  F1 Score           : 0.9506
+  Cross-Val Accuracy : 90.43 %  (+/- 0.17%)
+
+  Verdict
+  --------------------------------------------------------------
+  PASS -- Both models meet the production threshold.
+          Run the application:  streamlit run app.py
+==================================================================
+
+------------------------------------------------------------------
+  Saving model files to ./models/
+------------------------------------------------------------------
