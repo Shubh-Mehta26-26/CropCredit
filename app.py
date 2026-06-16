@@ -639,7 +639,7 @@ def render_sidebar(fm, pm, le):
                  "Cash Crop":"cat-cash","Vegetable":"cat-veg"}.get(cat, "cat-grain")
     st.sidebar.markdown(f'<span class="cat-badge {cat_cls}">{cat}</span>', unsafe_allow_html=True)
 
-    tonnage = st.sidebar.number_input("Tonnage (MT)", min_value=1.0,
+    tonnage = st.sidebar.number_input("Tonnage (MT)", min_value=50.0,
                                        max_value=50_000.0, value=500.0, step=50.0)
 
     # ── Loan Request ─────────────────────────────────────────────────────────
@@ -659,11 +659,11 @@ def render_sidebar(fm, pm, le):
     """, unsafe_allow_html=True)
     default_price   = float(BASE_PRICES.get(commodity, 2000))
     market_arrivals = st.sidebar.number_input("Market Arrivals (Qtl/day)",
-                                               min_value=100.0, max_value=500_000.0,
+                                               min_value=1000.0, max_value=500_000.0,
                                                value=15_000.0, step=1_000.0)
     current_price   = st.sidebar.number_input("Mandi Price (₹/Qtl)",
-                                               min_value=100.0, max_value=100_000.0,
-                                               value=default_price, step=50.0)
+                                               min_value=10.0, max_value=100_000.0,
+                                               value=default_price, step=1.0)
     rainfall_deficit= st.sidebar.number_input("Rainfall Deficit (mm)",
                                                min_value=-200.0, max_value=500.0,
                                                value=15.0, step=5.0)

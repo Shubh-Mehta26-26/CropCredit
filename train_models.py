@@ -184,6 +184,10 @@ def run_pipeline():
         if df is None:
             raise FileNotFoundError(f"Real data file for {commodity} not found!")
 
+        # Override the hardcoded local commodity_encoded value (always 0 in CSV)
+        # with the correct global LabelEncoder index.
+        df["commodity_encoded"] = le.transform([commodity])[0]
+
         X = df[FEATURE_COLUMNS]
         
         # Financial Risk Model

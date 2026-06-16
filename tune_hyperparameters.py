@@ -277,6 +277,9 @@ def run_tuning(target_commodity, n_iter, save):
     logger.info(f"Auto-Save Models   : {save}")
     logger.info("=" * 80)
 
+    from sklearn.preprocessing import LabelEncoder
+    le = LabelEncoder().fit(COMMODITIES)
+
     for commodity in selected:
         logger.info(f"\n[+] Tuning & comparing algorithms for crop: {commodity}")
         df = load_real_data(commodity)
@@ -284,6 +287,8 @@ def run_tuning(target_commodity, n_iter, save):
             logger.error(f"Real dataset for {commodity} not found. Skipping.")
             continue
             
+        # Override local encoding with global LabelEncoder index
+        df["commodity_encoded"] = le.transform([commodity])[0]
         X = df[FEATURE_COLUMNS]
         
         # 1. Financial Regressors Tuning & Comparison

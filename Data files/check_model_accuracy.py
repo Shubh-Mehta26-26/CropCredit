@@ -318,11 +318,14 @@ def main():
 
     # ── Load models ──────────────────────────────────────────────────────────
     print(f"\n  Loading models for {commodity} ...")
-    fin_model, phy_model, _ = load_models(commodity)
+    fin_model, phy_model, le = load_models(commodity)
 
     # ── Load data ─────────────────────────────────────────────────────────────
     print(f"\n  Loading data ...")
     df = load_csv(csv_path)
+
+    # Correct the commodity encoding using the loaded global label encoder
+    df["commodity_encoded"] = le.transform([commodity])[0]
 
     # ── Score both models ─────────────────────────────────────────────────────
     fin_metrics = check_financial_model(fin_model, df)
