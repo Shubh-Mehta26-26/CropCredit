@@ -986,39 +986,10 @@ def render_collateral_calculator(r):
           </div>
         </div>""", unsafe_allow_html=True)
     else:
-        req_qtl    = requested / (r["predicted_price"] * (r["approved_ltv"] / 100))
-        req_tonnes = req_qtl / 10
-        free_tonnes= r["tonnage"] - req_tonnes
-        pledge_pct = (req_tonnes / r["tonnage"]) * 100
-
         st.success(
             f"✅ **FULLY APPROVED** — Requested **₹{requested:,.0f}** is within the "
             f"maximum sanctionable limit of **₹{max_sanc:,.0f}**."
         )
-        st.info(
-            f"🧮 **Smart Pledge** — Pledge only **{req_tonnes:,.2f} MT** ({req_qtl:,.1f} qtl) "
-            f"of your **{r['tonnage']:,.0f} MT** inventory.\n\n"
-            f"🆓 **Free to sell {free_tonnes:,.2f} MT** — aim for Day {r['optimal_sell_day']} "
-            f"at peak ₹{r['predicted_price']:,.0f}/Qtl."
-        )
-        st.markdown(f"""
-        <div class="calc-card green">
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-            <span style="font-size:0.68rem;font-weight:700;letter-spacing:.09em;
-              text-transform:uppercase;color:var(--t4);">Inventory Allocation</span>
-            <span style="font-family:'JetBrains Mono';font-size:0.8rem;color:var(--teal3);">Only {pledge_pct:.1f}% pledged</span>
-          </div>
-          <div class="calc-bar-track" style="display:flex;">
-            <div style="width:{pledge_pct:.1f}%;background:linear-gradient(90deg,var(--amb3),var(--amb4));height:100%;"></div>
-            <div style="flex:1;background:linear-gradient(90deg,var(--teal1),var(--teal2));height:100%;border-radius:0 6px 6px 0;"></div>
-          </div>
-          <div style="display:flex;justify-content:space-between;margin-top:10px;">
-            <div><div style="font-family:'JetBrains Mono';font-size:0.87rem;color:var(--amb4);">{req_tonnes:,.2f} MT</div>
-              <div style="font-size:0.6rem;color:var(--t5);text-transform:uppercase;letter-spacing:.07em;">Pledged</div></div>
-            <div style="text-align:right;"><div style="font-family:'JetBrains Mono';font-size:0.87rem;color:var(--teal3);">{free_tonnes:,.2f} MT</div>
-              <div style="font-size:0.6rem;color:var(--t5);text-transform:uppercase;letter-spacing:.07em;">Free to Sell</div></div>
-          </div>
-        </div>""", unsafe_allow_html=True)
 
 
 
