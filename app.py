@@ -848,125 +848,7 @@ def render_financials_and_gauge(r):
           </div>
         </div>""", unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  UI — ANALYTICS CHARTS (Plotly)
-# ══════════════════════════════════════════════════════════════════════════════
-def render_analytics_charts(r):
-    try:
-        import plotly.graph_objects as go
-    except ImportError:
-        st.info("Run `pip install plotly` to enable analytics charts.")
-        return
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("""<div class="sl"><span class="sl-t">📈 Portfolio Analytics Dashboard</span>
-    <span class="sl-l"></span></div>""", unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns(3, gap="medium")
-
-    PAPER = "rgba(0,0,0,0)"
-    FONT  = dict(family="JetBrains Mono", color="#94a3b8")
-
-    # ── Chart 1: Donut — Loan Utilisation ────────────────────────────────────
-    with col1:
-        st.markdown("""<div class="cpanel">
-          <div class="cpanel-title">Loan Utilisation</div>
-          <div class="cpanel-sub">Sanctioned vs available collateral buffer</div>""",
-          unsafe_allow_html=True)
-        used = r["sanctioned_amount"]
-        free = max(0, r["collateral_value"] - used)
-        fig1 = go.Figure(go.Pie(
-            labels=["Sanctioned Loan", "Collateral Buffer"],
-            values=[used, free], hole=0.62,
-            marker=dict(colors=["#0d9488","#1a2535"],
-                        line=dict(color="#0d1422", width=3)),
-            textinfo="percent",
-            textfont=dict(family="JetBrains Mono", size=11, color="#cbd5e1"),
-            hovertemplate="<b>%{label}</b><br>₹%{value:,.0f}<extra></extra>",
-        ))
-        fig1.add_annotation(
-            text=f"₹{used/1e5:,.1f}L<br><span style='font-size:10px;color:#64748b'>Sanctioned</span>",
-            x=0.5, y=0.5, showarrow=False,
-            font=dict(family="JetBrains Mono", size=13, color="#f0f6ff"), align="center",
-        )
-        fig1.update_layout(showlegend=True, margin=dict(t=10,b=10,l=10,r=10), height=230,
-            paper_bgcolor=PAPER, plot_bgcolor=PAPER,
-            legend=dict(font=dict(**FONT, size=9), orientation="h",
-                        yanchor="bottom", y=-0.22, xanchor="center", x=0.5))
-        st.plotly_chart(fig1, use_container_width=True, config={"displayModeBar":False})
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # ── Chart 2: Bar — Risk Factor Breakdown ─────────────────────────────────
-    with col2:
-        st.markdown("""<div class="cpanel">
-          <div class="cpanel-title">Risk Factor Breakdown</div>
-          <div class="cpanel-sub">Normalised score of each physical risk driver</div>""",
-          unsafe_allow_html=True)
-        scores  = [
-            min(100, max(0, (r['warehouse_temp']-10)/40*100)),
-            min(100, r['humidity']),
-            min(100, r['moisture_content']/30*100),
-            r['spoilage_pct'],
-        ]
-        labels  = ["Temp","Humidity","Moisture","Spoilage"]
-        colors  = ["#f87171" if s>70 else "#f59e0b" if s>40 else "#2dd4bf" for s in scores]
-        fig2 = go.Figure(go.Bar(
-            x=labels, y=scores,
-            marker=dict(color=colors, line=dict(color="#0d1422",width=1)),
-            text=[f"{s:.0f}%" for s in scores], textposition="outside",
-            textfont=dict(family="JetBrains Mono", size=11, color="#cbd5e1"),
-            hovertemplate="<b>%{x}</b><br>Score: %{y:.1f}%<extra></extra>",
-        ))
-        fig2.add_shape(type="line", x0=-0.5, x1=3.5, y0=70, y1=70,
-                       line=dict(color="#f87171", width=1.5, dash="dot"))
-        fig2.add_annotation(x=3.4, y=76, text="Danger 70%", showarrow=False,
-                            font=dict(size=9, color="#f87171", family="JetBrains Mono"))
-        fig2.update_layout(
-            yaxis=dict(range=[0,115], ticksuffix="%",
-                       tickfont=FONT, gridcolor="rgba(255,255,255,0.05)", zeroline=False),
-            xaxis=dict(tickfont=dict(family="JetBrains Mono", color="#94a3b8", size=11)),
-            margin=dict(t=20,b=10,l=0,r=0), height=230, bargap=0.3,
-            paper_bgcolor=PAPER, plot_bgcolor=PAPER,
-        )
-        st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar":False})
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # ── Chart 3: Horizontal Bar — LTV Tier Comparison ───────────────────────
-    with col3:
-        st.markdown("""<div class="cpanel">
-          <div class="cpanel-title">LTV Tier Comparison</div>
-          <div class="cpanel-sub">Approved LTV vs policy tiers by risk band</div>""",
-          unsafe_allow_html=True)
-        tiers  = ["High Risk (>70%)","Moderate (30-70%)","Low Risk (<30%)"]
-        ltvs   = [0, 60, 85]
-        bcolors= ["rgba(248,113,113,0.15)","rgba(245,158,11,0.15)","rgba(45,212,191,0.15)"]
-        blines = ["#f87171","#f59e0b","#2dd4bf"]
-        fig3 = go.Figure()
-        for tier, ltv, bc, bl in zip(tiers, ltvs, bcolors, blines):
-            fig3.add_trace(go.Bar(
-                y=[tier], x=[ltv], orientation="h",
-                marker=dict(color=bc, line=dict(color=bl, width=1.5)),
-                text=[f"  {ltv}%"] if ltv > 0 else ["  0% — Rejected"],
-                textposition="inside" if ltv > 15 else "outside",
-                textfont=dict(family="JetBrains Mono", size=11, color=bl),
-                hovertemplate=f"<b>{tier}</b><br>Max LTV: {ltv}%<extra></extra>",
-                showlegend=False,
-            ))
-        cur = r["approved_ltv"]
-        lc  = "#2dd4bf" if cur > 0 else "#f87171"
-        fig3.add_shape(type="line", x0=cur, x1=cur, y0=-0.5, y1=2.5,
-                       line=dict(color=lc, width=2.5, dash="dash"))
-        fig3.add_annotation(x=cur, y=2.7, text=f"▼ This App: {cur:.0f}%",
-                            showarrow=False, font=dict(size=9, color=lc, family="JetBrains Mono"))
-        fig3.update_layout(
-            xaxis=dict(range=[0,100], ticksuffix="%", tickfont=FONT,
-                       gridcolor="rgba(255,255,255,0.05)"),
-            yaxis=dict(tickfont=dict(family="JetBrains Mono", color="#94a3b8", size=9)),
-            margin=dict(t=28,b=10,l=0,r=10), height=230, barmode="overlay",
-            paper_bgcolor=PAPER, plot_bgcolor=PAPER,
-        )
-        st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar":False})
-        st.markdown("</div>", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  UI — FORECAST CHART
@@ -1161,7 +1043,6 @@ def render_placeholder():
 def render_results(r):
     render_kpis(r)
     render_financials_and_gauge(r)
-    render_analytics_charts(r)
     render_forecast(r)
     render_decision(r)
     render_collateral_calculator(r)
