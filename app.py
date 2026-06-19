@@ -524,7 +524,8 @@ def load_commodity_models(commodity):
 #  INFERENCE ENGINE
 # ══════════════════════════════════════════════════════════════════════════════
 def run_inference(fm, pm, le, commodity, tonnage, market_arrivals, current_price,
-                  rainfall_deficit, warehouse_temp, humidity, moisture_content):
+                  rainfall_deficit, warehouse_temp, humidity, moisture_content,
+                  requested_loan=0.0):
     # Fall back to a known training commodity for encoding
     known = list(le.classes_)
     enc_commodity = commodity if commodity in known else known[0]
@@ -558,7 +559,12 @@ def run_inference(fm, pm, le, commodity, tonnage, market_arrivals, current_price
 
     quintals  = tonnage * 10
     col_val   = quintals * predicted_price
-    sanc_amt  = col_val * (ltv / 100)
+    max_sanc  = col_val * (ltv / 100)
+    if decision == "APPROVED":
+        sanc_amt = min(requested_loan, max_sanc) if requested_loan > 0 else max_sanc
+    else:
+        sanc_amt = 0.0
+
     curve     = _price_curve(current_price, predicted_price)
     opt_day   = int(curve["Price (₹/Qtl)"].argmax()) + 1
 
@@ -569,8 +575,9 @@ def run_inference(fm, pm, le, commodity, tonnage, market_arrivals, current_price
         spoilage_pct=spoilage_pct, predicted_price=round(predicted_price, 2),
         optimal_sell_day=opt_day, approved_ltv=ltv,
         collateral_value=round(col_val, 2), sanctioned_amount=round(sanc_amt, 2),
+        max_sanctioned_amount=round(max_sanc, 2),
         loan_decision=decision, rejection_reason=reason, price_curve=curve,
-        requested_loan=0.0,   # overwritten in main() after sidebar input
+        requested_loan=requested_loan,
     )
 
 def _price_curve(s, e, days=90):
@@ -761,7 +768,7 @@ def render_financials_and_gauge(r):
         fc1.metric("Tonnage",           f"{r['tonnage']:,.0f} MT")
         fc2.metric("Collateral Value",  f"₹{r['collateral_value']/1e5:,.1f}L", f"{q:,.0f} qtl")
         fc3.metric("Sanctioned Amount", f"₹{r['sanctioned_amount']/1e5:,.1f}L",
-                   f"LTV {r['approved_ltv']:.0f}%")
+                   f"LTV {r['approved_ltv']:.0f}% (Max: ₹{r['max_sanctioned_amount']/1e5:,.1f}L)")
 
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("""<div class="sl"><span class="sl-t">📋 Application Parameters</span>
@@ -857,7 +864,7 @@ def render_analytics_charts(r):
           <div class="cpanel-title">Loan Utilisation</div>
           <div class="cpanel-sub">Sanctioned vs available collateral buffer</div>""",
           unsafe_allow_html=True)
-        used = min(r["sanctioned_amount"], r["requested_loan"]) if r["requested_loan"] > 0 else r["sanctioned_amount"]
+        used = r["sanctioned_amount"]
         free = max(0, r["collateral_value"] - used)
         fig1 = go.Figure(go.Pie(
             labels=["Sanctioned Loan", "Collateral Buffer"],
@@ -1008,12 +1015,14 @@ def render_decision(r):
             <div class="db-kvs">
               <div class="db-kv"><div class="db-kv-val">{r['approved_ltv']:.0f}%</div><div class="db-kv-key">LTV Ratio</div></div>
               <div class="db-kv"><div class="db-kv-val">₹{r['collateral_value']/1e5:,.1f}L</div><div class="db-kv-key">Collateral</div></div>
+              <div class="db-kv"><div class="db-kv-val">₹{r['max_sanctioned_amount']/1e5:,.1f}L</div><div class="db-kv-key">Max Limit</div></div>
               <div class="db-kv"><div class="db-kv-val">{r['spoilage_pct']}%</div><div class="db-kv-key">Spoilage Risk</div></div>
             </div>
           </div>
         </div>""", unsafe_allow_html=True)
         st.success(
             f"✅ **SANCTIONED:** ₹{r['sanctioned_amount']/1e5:,.2f}L at {r['approved_ltv']:.0f}% LTV "
+            f"(Max Limit: ₹{r['max_sanctioned_amount']/1e5:,.2f}L) "
             f"· Optimal sell Day {r['optimal_sell_day']} "
             f"· Forecast ₹{r['predicted_price']:,.0f}/Qtl"
         )
@@ -1046,7 +1055,7 @@ def render_collateral_calculator(r):
     if r["loan_decision"] != "APPROVED":
         return
     requested  = r["requested_loan"]
-    max_sanc   = r["sanctioned_amount"]
+    max_sanc   = r["max_sanctioned_amount"]
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""<div class="sl"><span class="sl-t">🔁 Reverse Collateral Calculator</span>
@@ -1176,8 +1185,8 @@ def main():
                     inp["market_arrivals"],inp["current_price"],
                     inp["rainfall_deficit"],inp["warehouse_temp"],
                     inp["humidity"],       inp["moisture_content"],
+                    requested_loan=inp["requested_loan"],
                 )
-                result["requested_loan"] = inp["requested_loan"]
                 st.session_state["last_result"] = result
             except Exception as e:
                 st.error(f"**Inference error:** {e}")
