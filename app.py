@@ -565,8 +565,8 @@ def run_inference(fm, pm, le, commodity, tonnage, market_arrivals, current_price
     else:
         sanc_amt = 0.0
 
-    curve     = _price_curve(current_price, predicted_price)
-    opt_day   = int(curve["Price (₹/Qtl)"].argmax()) + 1
+    opt_day   = 90 if predicted_price >= current_price else 7
+    curve     = _price_curve(current_price, predicted_price, opt_day)
 
     return dict(
         commodity=commodity, tonnage=tonnage, market_arrivals=market_arrivals,
@@ -580,13 +580,28 @@ def run_inference(fm, pm, le, commodity, tonnage, market_arrivals, current_price
         requested_loan=requested_loan,
     )
 
-def _price_curve(s, e, days=90):
+def _price_curve(s, e, opt_day, days=90):
     np.random.seed(42)
-    t  = np.linspace(0, 1, days)
-    p  = s + (e-s)*t + 0.04*s*np.sin(4*np.pi*t + np.pi/6) + np.random.normal(0, 0.012*s, days)
-    p  = np.maximum(p, s * 0.7)
-    dts = [(datetime.today()+timedelta(days=i)).strftime("%b %d") for i in range(days)]
-    df  = pd.DataFrame({"Date": dts, "Price (₹/Qtl)": np.round(p, 2)}).set_index("Date")
+    peak_idx = opt_day - 1
+    t = np.arange(days)
+    
+    if opt_day == 90:
+        p = s + (e - s) * (t / (days - 1))
+    else:
+        # Peak at Day 7: rise to peak_val at Day 7, then drop to e at Day 90
+        peak_val = s * 1.03
+        p = np.zeros(days, dtype=float)
+        p[:7] = np.linspace(s, peak_val, 7)
+        p[7:] = np.linspace(peak_val, e, days - 7)
+        
+    p += 0.01 * s * np.sin(4 * np.pi * (t / days) + np.pi/6) + np.random.normal(0, 0.005 * s, days)
+    
+    # Ensure the absolute maximum is exactly at the peak_idx
+    p[peak_idx] = max(p) + 0.005 * s
+    p = np.maximum(p, s * 0.5)
+    
+    dts = [(datetime.today() + timedelta(days=int(i))).strftime("%b %d") for i in range(days)]
+    df = pd.DataFrame({"Date": dts, "Price (₹/Qtl)": np.round(p, 2)}).set_index("Date")
     df["7-Day MA"] = df["Price (₹/Qtl)"].rolling(7, min_periods=1).mean().round(2)
     return df
 
@@ -671,9 +686,6 @@ def render_sidebar(fm, pm, le):
     current_price   = st.sidebar.number_input("Mandi Price (₹/Qtl)",
                                                min_value=10.0, max_value=100_000.0,
                                                value=default_price, step=1.0)
-    rainfall_deficit= st.sidebar.number_input("Rainfall Deficit (mm)",
-                                               min_value=-200.0, max_value=500.0,
-                                               value=15.0, step=5.0)
 
     # ── Warehouse Sensors ────────────────────────────────────────────────────
     st.sidebar.markdown("""<div class="sb-sec"><span class="sb-sec-icon">🌡️</span>
@@ -700,7 +712,7 @@ def render_sidebar(fm, pm, le):
         commodity=commodity,         tonnage=tonnage,
         requested_loan=requested_loan,
         market_arrivals=market_arrivals, current_price=current_price,
-        rainfall_deficit=rainfall_deficit, warehouse_temp=warehouse_temp,
+        rainfall_deficit=15.0, warehouse_temp=warehouse_temp,
         humidity=humidity,           moisture_content=moisture_content,
         evaluate=evaluate,
     )
@@ -780,11 +792,10 @@ def render_financials_and_gauge(r):
           <div class="fcell"><div class="fkey">Tonnage</div><div class="fval">{r['tonnage']:,.0f} MT</div></div>
           <div class="fcell"><div class="fkey">Market Arrivals</div><div class="fval">{r['market_arrivals']:,.0f} Qtl/day</div></div>
           <div class="fcell"><div class="fkey">Mandi Price</div><div class="fval">₹{r['current_price']:,.0f} / Qtl</div></div>
-          <div class="fcell"><div class="fkey">Rainfall Deficit</div><div class="fval">{r['rainfall_deficit']:+.1f} mm</div></div>
           <div class="fcell"><div class="fkey">Warehouse Temp</div><div class="fval">{r['warehouse_temp']:.1f} °C</div></div>
           <div class="fcell"><div class="fkey">Relative Humidity</div><div class="fval">{r['humidity']:.1f} %</div></div>
           <div class="fcell"><div class="fkey">Moisture Content</div><div class="fval">{r['moisture_content']:.1f} %</div></div>
-          <div class="fcell"><div class="fkey">Spoilage Sensitivity</div><div class="fval">{SPOILAGE_SENSITIVITY.get(r['commodity'],1.0):.1f}×</div></div>
+          <div class="fcell" style="grid-column: span 2;"><div class="fkey">Spoilage Sensitivity</div><div class="fval">{SPOILAGE_SENSITIVITY.get(r['commodity'],1.0):.1f}×</div></div>
         </div>""", unsafe_allow_html=True)
 
     with right:
