@@ -565,8 +565,21 @@ def run_inference(fm, pm, le, commodity, tonnage, market_arrivals, current_price
     else:
         sanc_amt = 0.0
 
-    opt_day   = 90 if predicted_price >= current_price else 7
-    curve     = _price_curve(current_price, predicted_price, opt_day)
+    # 1. Generate base price curve using the original simulation function
+    curve     = _price_curve(current_price, predicted_price)
+    
+    # 2. Find the raw peak day
+    raw_opt   = int(curve["Price (₹/Qtl)"].argmax()) + 1
+    
+    # 3. Snap to closest preferred optimal day
+    possible  = [7, 14, 20, 30, 50, 90]
+    opt_day   = min(possible, key=lambda d: abs(d - raw_opt))
+    
+    # 4. Slightly boost/ensure the peak matches opt_day in the curve
+    peak_idx  = opt_day - 1
+    max_val   = float(curve["Price (₹/Qtl)"].max())
+    curve.iloc[peak_idx, 0] = round(max_val + 0.005 * current_price, 2)
+    curve["7-Day MA"] = curve["Price (₹/Qtl)"].rolling(7, min_periods=1).mean().round(2)
 
     return dict(
         commodity=commodity, tonnage=tonnage, market_arrivals=market_arrivals,
@@ -580,28 +593,13 @@ def run_inference(fm, pm, le, commodity, tonnage, market_arrivals, current_price
         requested_loan=requested_loan,
     )
 
-def _price_curve(s, e, opt_day, days=90):
+def _price_curve(s, e, days=90):
     np.random.seed(42)
-    peak_idx = opt_day - 1
-    t = np.arange(days)
-    
-    if opt_day == 90:
-        p = s + (e - s) * (t / (days - 1))
-    else:
-        # Peak at Day 7: rise to peak_val at Day 7, then drop to e at Day 90
-        peak_val = s * 1.03
-        p = np.zeros(days, dtype=float)
-        p[:7] = np.linspace(s, peak_val, 7)
-        p[7:] = np.linspace(peak_val, e, days - 7)
-        
-    p += 0.01 * s * np.sin(4 * np.pi * (t / days) + np.pi/6) + np.random.normal(0, 0.005 * s, days)
-    
-    # Ensure the absolute maximum is exactly at the peak_idx
-    p[peak_idx] = max(p) + 0.005 * s
-    p = np.maximum(p, s * 0.5)
-    
-    dts = [(datetime.today() + timedelta(days=int(i))).strftime("%b %d") for i in range(days)]
-    df = pd.DataFrame({"Date": dts, "Price (₹/Qtl)": np.round(p, 2)}).set_index("Date")
+    t  = np.linspace(0, 1, days)
+    p  = s + (e-s)*t + 0.04*s*np.sin(4*np.pi*t + np.pi/6) + np.random.normal(0, 0.012*s, days)
+    p  = np.maximum(p, s * 0.7)
+    dts = [(datetime.today()+timedelta(days=i)).strftime("%b %d") for i in range(days)]
+    df  = pd.DataFrame({"Date": dts, "Price (₹/Qtl)": np.round(p, 2)}).set_index("Date")
     df["7-Day MA"] = df["Price (₹/Qtl)"].rolling(7, min_periods=1).mean().round(2)
     return df
 
